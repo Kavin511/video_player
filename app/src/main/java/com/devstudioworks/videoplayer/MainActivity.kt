@@ -1,5 +1,6 @@
 package com.devstudioworks.videoplayer
 
+import android.content.pm.ActivityInfo
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -13,25 +14,28 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         val launchIntent = intent
         val type = launchIntent.type
-        launchIntent.data.takeIf {
-            if (it == null) {
-                Toast.makeText(this, "Open video from file chooser to play!", Toast.LENGTH_SHORT)
-                    .show()
+        launchIntent.data.apply {
+            if (this == null) {
+                Toast.makeText(
+                    applicationContext,
+                    "Open video from file chooser to play!",
+                    Toast.LENGTH_LONG
+                ).show()
+            } else {
+                val mediaItemBuilder = MediaItem.Builder()
+                    .setUri(this)
+                    .setMimeType(type)
+                    .build()
+                val playerBuilder: ExoPlayer = ExoPlayer.Builder(applicationContext)
+                    .build()
+                playerBuilder.setMediaItem(mediaItemBuilder, 0)
+                val pl = findViewById<PlayerView>(R.id.player)
+                pl.player = playerBuilder
+                (pl.player as ExoPlayer).prepare()
+                (pl.player as ExoPlayer).playWhenReady = true
+                (pl.player as ExoPlayer).setPlaybackSpeed(2F)
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
             }
-            it != null
-        }.apply {
-            val mediaItemBuilder = MediaItem.Builder()
-                .setUri(this)
-                .setMimeType(type)
-                .build()
-            val playerBuilder: ExoPlayer = ExoPlayer.Builder(applicationContext)
-                .build()
-            playerBuilder.setMediaItem(mediaItemBuilder, 0)
-            val pl = findViewById<PlayerView>(R.id.player)
-            pl.player = playerBuilder
-            (pl.player as ExoPlayer).prepare()
-            (pl.player as ExoPlayer).playWhenReady = true
-            (pl.player as ExoPlayer).setPlaybackSpeed(2F)
         }
     }
 
