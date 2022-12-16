@@ -1,7 +1,10 @@
 package com.devstudioworks.videoplayer
 
+import android.app.PictureInPictureParams
 import android.content.Intent
+import android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.MotionEvent
@@ -9,8 +12,9 @@ import android.view.ScaleGestureDetector
 import android.view.ScaleGestureDetector.SimpleOnScaleGestureListener
 import android.view.View
 import android.view.View.GONE
-import android.view.WindowManager
+import android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -64,6 +68,32 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
+    override fun onStop() {
+        super.onStop()
+        binding.player.onPause()
+        setScreenOn(keepScreenOn = false)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    override fun onPause() {
+        super.onPause()
+        if (applicationContext.packageManager.hasSystemFeature(FEATURE_PICTURE_IN_PICTURE)) {
+            val builder = PictureInPictureParams.Builder()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                builder.setAutoEnterEnabled(true)
+            }
+            builder.build()
+        }
+    }
+
+    private fun setScreenOn(keepScreenOn: Boolean) {
+        if (keepScreenOn) {
+            window.addFlags(FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(FLAG_KEEP_SCREEN_ON)
+        }
+    }
+
     private fun Uri?.initialiseVideoFileToPlay() {
         val mediaItemBuilder = MediaItem.Builder()
             .setUri(this)
@@ -80,7 +110,7 @@ class MainActivity : AppCompatActivity() {
         pl.controllerHideOnTouch = true
         pl.setKeepContentOnPlayerReset(true)
         (pl.player as ExoPlayer).playWhenReady = true
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        setScreenOn(keepScreenOn = true)
         hideSystemBars()
     }
 
