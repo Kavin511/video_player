@@ -13,7 +13,6 @@
         android:layout_height="match_parent"
         android:fitsSystemWindows="true"
         app:hide_on_touch="true"
-        app:show_buffering="always"
         app:use_controller="true" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton

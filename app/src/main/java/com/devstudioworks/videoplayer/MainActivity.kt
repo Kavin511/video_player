@@ -9,22 +9,20 @@ import android.os.Bundle
 import android.provider.MediaStore
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
-import android.view.ScaleGestureDetector.SimpleOnScaleGestureListener
 import android.view.View
 import android.view.View.GONE
+import android.view.View.VISIBLE
 import android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.devstudioworks.videoplayer.databinding.ActivityMainBinding
+import com.devstudioworks.videoplayer.utils.SimpleGesture
 import com.google.android.exoplayer2.C.VIDEO_SCALING_MODE_SCALE_TO_FIT
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
-import com.google.android.exoplayer2.ui.AspectRatioFrameLayout
-import com.google.android.exoplayer2.ui.PlayerView
 
 
 class MainActivity : AppCompatActivity() {
@@ -70,19 +68,26 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStop() {
         super.onStop()
-        binding.player.onPause()
+        releasePlayer()
         setScreenOn(keepScreenOn = false)
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     override fun onPause() {
         super.onPause()
+        enterPipMode()
+    }
+
+    private fun enterPipMode() {
         if (applicationContext.packageManager.hasSystemFeature(FEATURE_PICTURE_IN_PICTURE)) {
-            val builder = PictureInPictureParams.Builder()
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                builder.setAutoEnterEnabled(true)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val builder = PictureInPictureParams.Builder()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    builder.setAutoEnterEnabled(true)
+                }
+                enterPictureInPictureMode(builder.build())
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                enterPictureInPictureMode()
             }
-            builder.build()
         }
     }
 
@@ -102,16 +107,28 @@ class MainActivity : AppCompatActivity() {
             .setVideoScalingMode(VIDEO_SCALING_MODE_SCALE_TO_FIT)
             .build()
         playerBuilder.setMediaItem(mediaItemBuilder, 0)
-        val pl = binding.player
-        simpleGestureListener = ScaleGestureDetector(this@MainActivity, SimpleGesture(pl))
-        pl.player = playerBuilder
+        val playerView = binding.player
+        simpleGestureListener = ScaleGestureDetector(this@MainActivity, SimpleGesture(playerView))
+        playerView.player = playerBuilder
         binding.selectVideoToPlay.visibility = GONE
-        pl.setControllerHideDuringAds(true)
-        pl.controllerHideOnTouch = true
-        pl.setKeepContentOnPlayerReset(true)
-        (pl.player as ExoPlayer).playWhenReady = true
+        playerView.controllerHideOnTouch = true
+        playerView.setKeepContentOnPlayerReset(true)
+        (playerView.player as ExoPlayer).playWhenReady = true
         setScreenOn(keepScreenOn = true)
         hideSystemBars()
+    }
+
+    override fun onBackPressed() {
+        enterPipMode()
+    }
+
+    private fun releasePlayer() {
+        if (binding.player.player != null) {
+            binding.player.player?.release()
+            binding.player.player?.stop()
+            binding.player.player = null
+            binding.selectVideoToPlay.visibility = VISIBLE
+        }
     }
 
     private fun hideSystemBars() {
@@ -120,27 +137,6 @@ class MainActivity : AppCompatActivity() {
         windowInsetsController.systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
-    }
-
-}
-
-class SimpleGesture(private val player: PlayerView) : SimpleOnScaleGestureListener() {
-    private var scaleFactor = 0f
-    override fun onScale(detector: ScaleGestureDetector?): Boolean {
-        scaleFactor = detector?.scaleFactor ?: 0f
-        return super.onScale(detector)
-    }
-
-    override fun onScaleBegin(detector: ScaleGestureDetector?): Boolean {
-        return super.onScaleBegin(detector)
-    }
-
-    override fun onScaleEnd(detector: ScaleGestureDetector?) {
-        if (scaleFactor > 1) {
-            player.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-        } else {
-            player.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-        }
     }
 
 }
