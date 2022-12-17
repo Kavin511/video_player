@@ -15,19 +15,31 @@ import android.view.View.VISIBLE
 import android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.net.toUri
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.devstudioworks.videoplayer.databinding.ActivityMainBinding
+import com.devstudioworks.videoplayer.preferences.VideoPreferences
 import com.devstudioworks.videoplayer.utils.SimpleGesture
 import com.google.android.exoplayer2.C.VIDEO_SCALING_MODE_SCALE_TO_FIT
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
+//@HiltAndroidApp
+//class VideoPlayer : Application()
 
+//@AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
     lateinit var binding: ActivityMainBinding
     lateinit var simpleGestureListener: ScaleGestureDetector
+    lateinit var videoPreferences: VideoPreferences
+    val coroutineScope = CoroutineScope(Dispatchers.Main)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -37,10 +49,23 @@ class MainActivity : AppCompatActivity() {
         binding.selectVideoToPlay.setOnClickListener {
             selectVideoFileToPlay()
         }
+        videoPreferences = VideoPreferences(applicationContext)
+
         launchIntent.data.apply {
             if (this != null) {
                 binding.selectVideoToPlay.visibility = GONE
                 this.initialiseVideoFileToPlay()
+            }
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        coroutineScope.launch {
+            videoPreferences.getVideoUri.collectLatest {
+                if (it?.isNotEmpty() == true) {
+                    it.toUri().initialiseVideoFileToPlay()
+                }
             }
         }
     }
@@ -54,26 +79,30 @@ class MainActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
             if (it.resultCode == RESULT_OK) {
                 it.data?.data.apply {
+                    if (this != null) {
+                        coroutineScope.launch {
+                            videoPreferences.setVideoUri(this@apply.toString())
+                        }
+                    }
                     initialiseVideoFileToPlay()
                 }
             }
         }
 
-
     override fun onTouchEvent(event: MotionEvent?): Boolean {
         super.onTouchEvent(event)
-        simpleGestureListener.onTouchEvent(event)
+        event?.let { simpleGestureListener.onTouchEvent(it) }
         return true
     }
 
     override fun onStop() {
         super.onStop()
-        releasePlayer()
         setScreenOn(keepScreenOn = false)
     }
 
     override fun onPause() {
         super.onPause()
+        releasePlayer()
         enterPipMode()
     }
 
@@ -116,10 +145,6 @@ class MainActivity : AppCompatActivity() {
         (playerView.player as ExoPlayer).playWhenReady = true
         setScreenOn(keepScreenOn = true)
         hideSystemBars()
-    }
-
-    override fun onBackPressed() {
-        enterPipMode()
     }
 
     private fun releasePlayer() {
