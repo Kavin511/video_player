@@ -95,6 +95,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun Uri?.initialiseVideoFileToPlay() {
+        val playerView = binding.player
+        val player = playerView.player as ExoPlayer?
+        player?.stop()
+        player?.clearMediaItems()
         val mediaItemBuilder = MediaItem.Builder()
             .setUri(this)
             .build()
@@ -102,14 +106,14 @@ class MainActivity : AppCompatActivity() {
             .setVideoScalingMode(VIDEO_SCALING_MODE_SCALE_TO_FIT)
             .build()
         playerBuilder.setMediaItem(mediaItemBuilder, 0)
-        val pl = binding.player
-        simpleGestureListener = ScaleGestureDetector(this@MainActivity, SimpleGesture(pl))
-        pl.player = playerBuilder
+        simpleGestureListener = ScaleGestureDetector(this@MainActivity, SimpleGesture(playerView))
+        playerView.player = playerBuilder
         binding.selectVideoToPlay.visibility = GONE
-        pl.setControllerHideDuringAds(true)
-        pl.controllerHideOnTouch = true
-        pl.setKeepContentOnPlayerReset(true)
-        (pl.player as ExoPlayer).playWhenReady = true
+        playerView.setControllerHideDuringAds(true)
+        (player as ExoPlayer).setPlaybackSpeed(2.0f)
+        playerView.controllerHideOnTouch = true
+        playerView.setKeepContentOnPlayerReset(true)
+        player.playWhenReady = true
         setScreenOn(keepScreenOn = true)
         hideSystemBars()
     }
