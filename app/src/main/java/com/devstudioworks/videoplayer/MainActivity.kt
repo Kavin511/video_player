@@ -12,13 +12,14 @@ import android.view.ScaleGestureDetector
 import android.view.ScaleGestureDetector.SimpleOnScaleGestureListener
 import android.view.View
 import android.view.View.GONE
+import android.view.View.VISIBLE
 import android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.ViewModelProvider
 import com.devstudioworks.videoplayer.databinding.ActivityMainBinding
 import com.google.android.exoplayer2.C.VIDEO_SCALING_MODE_SCALE_TO_FIT
 import com.google.android.exoplayer2.ExoPlayer
@@ -30,11 +31,17 @@ import com.google.android.exoplayer2.ui.PlayerView
 class MainActivity : AppCompatActivity() {
     lateinit var binding: ActivityMainBinding
     lateinit var simpleGestureListener: ScaleGestureDetector
+    lateinit var playerView: PlayerView
+    var player: ExoPlayer? = null
+    lateinit var playerViewModel: PlayerViewModel
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
+        playerViewModel = ViewModelProvider(this).get(PlayerViewModel::class.java)
         setContentView(binding.root)
         val launchIntent = intent
+        playerView = binding.player
+        player = playerView.player as ExoPlayer?
         binding.selectVideoToPlay.visibility = View.VISIBLE
         binding.selectVideoToPlay.setOnClickListener {
             selectVideoFileToPlay()
@@ -42,8 +49,11 @@ class MainActivity : AppCompatActivity() {
         launchIntent.data.apply {
             if (this != null) {
                 binding.selectVideoToPlay.visibility = GONE
-                this.initialiseVideoFileToPlay()
+                playerViewModel.selectedVideoUri.value = this
             }
+        }
+        playerViewModel.selectedVideoUri.observe(this) {
+            it?.initialiseVideoFileToPlay()
         }
     }
 
@@ -56,7 +66,8 @@ class MainActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
             if (it.resultCode == RESULT_OK) {
                 it.data?.data.apply {
-                    initialiseVideoFileToPlay()
+                    playerViewModel.selectedVideoUri.value = this
+                    this?.initialiseVideoFileToPlay()
                 }
             }
         }
@@ -74,15 +85,26 @@ class MainActivity : AppCompatActivity() {
         setScreenOn(keepScreenOn = false)
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     override fun onPause() {
         super.onPause()
+        enterPipMode()
+    }
+
+    private fun enterPipMode() {
         if (applicationContext.packageManager.hasSystemFeature(FEATURE_PICTURE_IN_PICTURE)) {
-            val builder = PictureInPictureParams.Builder()
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                builder.setAutoEnterEnabled(true)
+            val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                PictureInPictureParams.Builder()
+            } else {
+                null
             }
-            builder.build()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                builder?.setAutoEnterEnabled(true)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                builder?.build()
+            }
+        } else {
+            resetPlayer()
         }
     }
 
@@ -95,10 +117,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun Uri?.initialiseVideoFileToPlay() {
-        val playerView = binding.player
-        val player = playerView.player as ExoPlayer?
-        player?.stop()
-        player?.clearMediaItems()
+        resetPlayer()
         val mediaItemBuilder = MediaItem.Builder()
             .setUri(this)
             .build()
@@ -110,12 +129,16 @@ class MainActivity : AppCompatActivity() {
         playerView.player = playerBuilder
         binding.selectVideoToPlay.visibility = GONE
         playerView.setControllerHideDuringAds(true)
-        (player as ExoPlayer).setPlaybackSpeed(2.0f)
         playerView.controllerHideOnTouch = true
         playerView.setKeepContentOnPlayerReset(true)
-        player.playWhenReady = true
+        player?.playWhenReady = true
         setScreenOn(keepScreenOn = true)
         hideSystemBars()
+    }
+
+    private fun resetPlayer() {
+        player?.stop()
+        player?.clearMediaItems()
     }
 
     private fun hideSystemBars() {
