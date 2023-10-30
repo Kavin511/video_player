@@ -73,7 +73,7 @@ class MainActivity : AppCompatActivity() {
         }
 
 
-    override fun onTouchEvent(event: MotionEvent?): Boolean {
+    override fun onTouchEvent(event: MotionEvent): Boolean {
         super.onTouchEvent(event)
         simpleGestureListener.onTouchEvent(event)
         return true
@@ -153,16 +153,16 @@ class MainActivity : AppCompatActivity() {
 
 class SimpleGesture(private val player: PlayerView) : SimpleOnScaleGestureListener() {
     private var scaleFactor = 0f
-    override fun onScale(detector: ScaleGestureDetector?): Boolean {
+    override fun onScale(detector: ScaleGestureDetector): Boolean {
         scaleFactor = detector?.scaleFactor ?: 0f
         return super.onScale(detector)
     }
 
-    override fun onScaleBegin(detector: ScaleGestureDetector?): Boolean {
+    override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
         return super.onScaleBegin(detector)
     }
 
-    override fun onScaleEnd(detector: ScaleGestureDetector?) {
+    override fun onScaleEnd(detector: ScaleGestureDetector) {
         if (scaleFactor > 1) {
             player.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
         } else {
