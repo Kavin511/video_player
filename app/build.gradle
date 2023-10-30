@@ -4,12 +4,21 @@ plugins {
 }
 
 android {
-    compileSdk 32
+    compileSdk 34
+
+    signingConfigs {
+        release {
+            storeFile file('devstudiowork.jks')
+            storePassword 'devstudioworks'
+            keyAlias 'key0'
+            keyPassword 'devstudioworks'
+        }
+    }
 
     defaultConfig {
         applicationId "com.devstudioworks.videoplayer"
         minSdk 21
-        targetSdk 32
+        targetSdk 34
         versionCode 1
         versionName "1.0"
 
