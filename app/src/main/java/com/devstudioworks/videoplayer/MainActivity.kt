@@ -19,6 +19,7 @@ import androidx.core.net.toUri
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.ViewModelProvider
 import com.devstudioworks.videoplayer.databinding.ActivityMainBinding
 import com.devstudioworks.videoplayer.preferences.VideoPreferences
 import com.devstudioworks.videoplayer.utils.SimpleGesture
@@ -39,12 +40,17 @@ class MainActivity : AppCompatActivity() {
     lateinit var simpleGestureListener: ScaleGestureDetector
     lateinit var videoPreferences: VideoPreferences
     val coroutineScope = CoroutineScope(Dispatchers.Main)
-
+    lateinit var playerView: PlayerView
+    var player: ExoPlayer? = null
+    lateinit var playerViewModel: PlayerViewModel
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
+        playerViewModel = ViewModelProvider(this).get(PlayerViewModel::class.java)
         setContentView(binding.root)
         val launchIntent = intent
+        playerView = binding.player
+        player = playerView.player as ExoPlayer?
         binding.selectVideoToPlay.visibility = View.VISIBLE
         binding.selectVideoToPlay.setOnClickListener {
             selectVideoFileToPlay()
@@ -54,8 +60,11 @@ class MainActivity : AppCompatActivity() {
         launchIntent.data.apply {
             if (this != null) {
                 binding.selectVideoToPlay.visibility = GONE
-                this.initialiseVideoFileToPlay()
+                playerViewModel.selectedVideoUri.value = this
             }
+        }
+        playerViewModel.selectedVideoUri.observe(this) {
+            it?.initialiseVideoFileToPlay()
         }
     }
 
@@ -84,12 +93,13 @@ class MainActivity : AppCompatActivity() {
                             videoPreferences.setVideoUri(this@apply.toString())
                         }
                     }
+                    playerViewModel.selectedVideoUri.value = this
                     initialiseVideoFileToPlay()
                 }
             }
         }
 
-    override fun onTouchEvent(event: MotionEvent?): Boolean {
+    override fun onTouchEvent(event: MotionEvent): Boolean {
         super.onTouchEvent(event)
         event?.let { simpleGestureListener.onTouchEvent(it) }
         return true
@@ -115,7 +125,10 @@ class MainActivity : AppCompatActivity() {
                 }
                 enterPictureInPictureMode(builder.build())
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                builder.build()
                 enterPictureInPictureMode()
+            } else {
+                releasePlayer()
             }
         }
     }
@@ -129,10 +142,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun Uri?.initialiseVideoFileToPlay() {
-        val playerView = binding.player
-        val player = playerView.player as ExoPlayer?
-        player?.stop()
-        player?.clearMediaItems()
+        resetPlayer()
         val mediaItemBuilder = MediaItem.Builder()
             .setUri(this)
             .build()
@@ -147,7 +157,7 @@ class MainActivity : AppCompatActivity() {
         playerView.setControllerHideDuringAds(true)
         playerView.controllerHideOnTouch = true
         playerView.setKeepContentOnPlayerReset(true)
-        player.playWhenReady = true
+        player?.playWhenReady = true
         setScreenOn(keepScreenOn = true)
         hideSystemBars()
     }
@@ -156,6 +166,7 @@ class MainActivity : AppCompatActivity() {
         if (binding.player.player != null) {
             binding.player.player?.release()
             binding.player.player?.stop()
+            player?.clearMediaItems()
             binding.player.player = null
             binding.selectVideoToPlay.visibility = VISIBLE
         }

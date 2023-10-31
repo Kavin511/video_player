@@ -8,12 +8,21 @@ plugins {
     id("com.google.dagger.hilt.android")
 }
 android {
-    compileSdk 33
+    compileSdk 34
+
+    signingConfigs {
+        release {
+            storeFile file('devstudiowork.jks')
+            storePassword 'devstudioworks'
+            keyAlias 'key0'
+            keyPassword 'devstudioworks'
+        }
+    }
 
     defaultConfig {
         applicationId "com.devstudioworks.videoplayer"
         minSdk 21
-        targetSdk 33
+        targetSdk 34
         versionCode 1
         versionName "1.0"
 
