@@ -26,6 +26,7 @@ import com.devstudioworks.videoplayer.utils.SimpleGesture
 import com.google.android.exoplayer2.C.VIDEO_SCALING_MODE_SCALE_TO_FIT
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
+import com.google.android.exoplayer2.ui.PlayerView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
@@ -125,7 +126,6 @@ class MainActivity : AppCompatActivity() {
                 }
                 enterPictureInPictureMode(builder.build())
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                builder.build()
                 enterPictureInPictureMode()
             } else {
                 releasePlayer()
@@ -142,7 +142,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun Uri?.initialiseVideoFileToPlay() {
-        resetPlayer()
+        releasePlayer()
         val mediaItemBuilder = MediaItem.Builder()
             .setUri(this)
             .build()
