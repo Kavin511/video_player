@@ -111,6 +111,13 @@ class MainActivity : AppCompatActivity() {
         setScreenOn(keepScreenOn = false)
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        coroutineScope.launch {
+            videoPreferences.setVideoUri("")
+        }//todo uri stored in db is not working when reloaded. Need to fix that and remove this reset
+    }
+
     override fun onPause() {
         super.onPause()
         releasePlayer()
@@ -157,7 +164,7 @@ class MainActivity : AppCompatActivity() {
         playerView.setControllerHideDuringAds(true)
         playerView.controllerHideOnTouch = true
         playerView.setKeepContentOnPlayerReset(true)
-        player?.playWhenReady = true
+        player?.play()
         setScreenOn(keepScreenOn = true)
         hideSystemBars()
     }
