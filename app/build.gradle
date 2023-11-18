@@ -31,12 +31,17 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
+            signingConfig signingConfigs.release
+            zipAlignEnabled true
+            resValue "string", "app_name", "File Player - Video"
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         debug {
             debuggable true
             applicationIdSuffix ".debug"
+            resValue "string", "app_name", "File Player - Video debug"
         }
     }
     compileOptions {
