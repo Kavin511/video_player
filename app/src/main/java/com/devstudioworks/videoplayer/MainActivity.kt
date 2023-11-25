@@ -3,6 +3,7 @@ package com.devstudioworks.videoplayer
 import android.app.PictureInPictureParams
 import android.content.Intent
 import android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE
+import android.media.browse.MediaBrowser
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -20,22 +21,19 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.ViewModelProvider
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import com.devstudioworks.videoplayer.databinding.ActivityMainBinding
 import com.devstudioworks.videoplayer.preferences.VideoPreferences
 import com.devstudioworks.videoplayer.utils.SimpleGesture
-import com.google.android.exoplayer2.C.VIDEO_SCALING_MODE_SCALE_TO_FIT
-import com.google.android.exoplayer2.ExoPlayer
-import com.google.android.exoplayer2.MediaItem
-import com.google.android.exoplayer2.ui.PlayerView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-//@HiltAndroidApp
-//class VideoPlayer : Application()
-
-//@AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
     lateinit var binding: ActivityMainBinding
     lateinit var simpleGestureListener: ScaleGestureDetector
@@ -43,6 +41,7 @@ class MainActivity : AppCompatActivity() {
     val coroutineScope = CoroutineScope(Dispatchers.Main)
     lateinit var playerView: PlayerView
     var player: ExoPlayer? = null
+    lateinit var mediaItem: MediaItem
     lateinit var playerViewModel: PlayerViewModel
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,7 +50,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         val launchIntent = intent
         playerView = binding.player
-        player = playerView.player as ExoPlayer?
         binding.selectVideoToPlay.visibility = View.VISIBLE
         binding.selectVideoToPlay.setOnClickListener {
             selectVideoFileToPlay()
@@ -102,7 +100,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         super.onTouchEvent(event)
-        event?.let { simpleGestureListener.onTouchEvent(it) }
+        event.let { simpleGestureListener.onTouchEvent(it) }
         return true
     }
 
@@ -148,33 +146,36 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        releasePlayer()
+    }
+
     private fun Uri?.initialiseVideoFileToPlay() {
         releasePlayer()
-        val mediaItemBuilder = MediaItem.Builder()
-            .setUri(this)
-            .build()
-        val playerBuilder: ExoPlayer = ExoPlayer.Builder(applicationContext)
-            .setVideoScalingMode(VIDEO_SCALING_MODE_SCALE_TO_FIT)
-            .build()
-        playerBuilder.setMediaItem(mediaItemBuilder, 0)
-        val playerView = binding.player
-        simpleGestureListener = ScaleGestureDetector(this@MainActivity, SimpleGesture(playerView))
-        playerView.player = playerBuilder
+        if (player == null) {
+            player = ExoPlayer.Builder(applicationContext)
+                .build()
+            mediaItem = MediaItem.Builder().setUri(this)
+                .setMediaMetadata(MediaMetadata.Builder().setTitle(title).build()).build()
+            simpleGestureListener =
+                ScaleGestureDetector(this@MainActivity, SimpleGesture(playerView))
+            player?.setMediaItem(mediaItem, 0)
+            player?.setAudioAttributes(AudioAttributes.DEFAULT,  /* handleAudioFocus= */true)
+            player?.playWhenReady = true
+            playerView.player = player
+        }
         binding.selectVideoToPlay.visibility = GONE
-        playerView.setControllerHideDuringAds(true)
-        playerView.controllerHideOnTouch = true
-        playerView.setKeepContentOnPlayerReset(true)
-        player?.play()
         setScreenOn(keepScreenOn = true)
         hideSystemBars()
     }
 
     private fun releasePlayer() {
-        if (binding.player.player != null) {
-            binding.player.player?.release()
-            binding.player.player?.stop()
+        if (player != null) {
+            player?.release()
+            player?.stop()
             player?.clearMediaItems()
-            binding.player.player = null
+            player = null
             binding.selectVideoToPlay.visibility = VISIBLE
         }
     }
